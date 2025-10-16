@@ -1,285 +1,103 @@
-// Configuración del layout
-const layoutConfig = [
-    { 
-        tipo: 'espacios', 
-        numeros: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] 
-    },
-    { 
-        tipo: 'espacios', 
-        numeros: [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24] 
-    },
-    { 
-        tipo: 'pista', 
-        texto: 'PISTA' 
-    },
-    { 
-        tipo: 'espacios', 
-        numeros: [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] 
-    },
-    { 
-        tipo: 'espacios', 
-        numeros: [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46] 
-    },
-    { 
-        tipo: 'pista', 
-        texto: 'PISTA' 
-    },
-    { 
-        tipo: 'espacios', 
-        numeros: [47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58] 
-    },
-    { 
-        tipo: 'espacios', 
-        numeros: [59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69] 
-    }
-];
+/* reservas.js - reserva UI adaptada a API nueva o legacy */
+const POLL_INTERVAL = 1000;
+const API_ESTADOS = '/api/estado';
+const LEGACY_ESTADOS = '/estado_espacios';
 
 let selectedSpace = null;
-let espacioStates = {};
+let estadoActual = {};
 
-function inicializarLayoutReservas() {
-    const parkingLayout = document.getElementById('parkingLayoutReservas');
-    parkingLayout.innerHTML = '';
-    
-    layoutConfig.forEach((columna, index) => {
-        const columnaElement = document.createElement('div');
-        columnaElement.className = 'columna-reservas';
-        columnaElement.id = `columna-reservas-${index + 1}`;
-        
-        if (columna.tipo === 'pista') {
-            const pista = document.createElement('div');
-            pista.className = 'parking-space-reservas pista-reservas';
-            pista.innerHTML = `<div class="pista-text-reservas">${columna.texto}</div>`;
-            columnaElement.appendChild(pista);
-        } else {
-            columna.numeros.forEach(numeroEspacio => {
-                const espacio = document.createElement('div');
-                espacio.className = 'parking-space-reservas';
-                espacio.id = `space-reserva-${numeroEspacio}`;
-                espacio.dataset.spaceNumber = numeroEspacio;
-                espacio.innerHTML = `
-                    <div class="space-number-reservas">${numeroEspacio}</div>
-                    <div class="space-status-reservas">---</div>
-                `;
-                columnaElement.appendChild(espacio);
-            });
-        }
-        
-        parkingLayout.appendChild(columnaElement);
-    });
+// Inicializar layout (usa la función legacy si existe)
+function inicializarLayoutReservasCustom() {
+  if (typeof inicializarLayoutReservas === 'function') {
+    try { inicializarLayoutReservas(); } catch(e) { console.warn(e); }
+  } else {
+    // si no existía, se puede crear un layout simple (no obligatorio)
+    const root = document.getElementById('parkingLayoutReservas');
+    if (root) root.innerHTML = '<p>Layout de reservas cargado.</p>';
+  }
 }
 
-function setupEventHandlers() {
-    // Click en espacios
-    document.addEventListener('click', function(e) {
-        const spaceElement = e.target.closest('.parking-space-reservas');
-        if (spaceElement && !spaceElement.classList.contains('pista-reservas')) {
-            const spaceNumber = parseInt(spaceElement.dataset.spaceNumber);
-            selectSpace(spaceNumber, spaceElement);
-        }
-    });
-
-    // Cambio en duración
-    document.querySelectorAll('input[name="duration"]').forEach(radio => {
-        radio.addEventListener('change', updateReservationSummary);
-    });
-
-    // Formulario de reserva
-    document.getElementById('reservationForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        makeReservation();
-    });
-
-    // Actualizar hora actual
-    setInterval(updateCurrentTime, 1000);
-    updateCurrentTime();
-}
-
-function selectSpace(spaceNumber, spaceElement) {
-    const estado = espacioStates[spaceNumber];
-    
-    if (!estado || estado.reservado || estado.ocupado) {
-        showAlert('Este espacio no está disponible para reservar', 'warning');
-        return;
-    }
-
-    // Remover selección anterior
-    document.querySelectorAll('.parking-space-reservas.selected').forEach(el => {
-        el.classList.remove('selected');
-    });
-
-    // Seleccionar nuevo espacio
-    spaceElement.classList.add('selected');
-    selectedSpace = spaceNumber;
-
-    // Mostrar información del espacio seleccionado
-    document.getElementById('noSpaceSelected').classList.add('d-none');
-    document.getElementById('spaceSelected').classList.remove('d-none');
-    
-    document.getElementById('selectedSpaceNumber').textContent = spaceNumber;
-    document.getElementById('previewSpaceNumber').textContent = spaceNumber;
-    document.getElementById('summarySpace').textContent = spaceNumber;
-
-    // Habilitar botón de reserva
-    document.getElementById('btnReservar').disabled = false;
-
-    // Actualizar resumen
-    updateReservationSummary();
-}
-
-function updateReservationSummary() {
-    if (!selectedSpace) return;
-
-    const duration = document.querySelector('input[name="duration"]:checked').value;
-    const endTime = new Date();
-    endTime.setHours(endTime.getHours() + parseInt(duration));
-
-    document.getElementById('summaryDuration').textContent = duration + ' hora(s)';
-    document.getElementById('summaryEndTime').textContent = endTime.toLocaleTimeString();
-}
-
-function updateCurrentTime() {
-    document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
-}
-
-function makeReservation() {
-    if (!selectedSpace) return;
-
-    const duration = document.querySelector('input[name="duration"]:checked').value;
-    
-    fetch('/api/reservar', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            space_number: selectedSpace,
-            duration: parseInt(duration)
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showConfirmationModal(selectedSpace, duration);
-            loadUserReservations();
-            actualizarEstadoReservas();
-        } else {
-            showAlert(data.message, 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showAlert('Error al realizar la reserva', 'error');
-    });
-}
-
-function showConfirmationModal(spaceNumber, duration) {
-    const endTime = new Date();
-    endTime.setHours(endTime.getHours() + parseInt(duration));
-    
-    document.getElementById('confirmedSpace').textContent = spaceNumber;
-    document.getElementById('confirmedDuration').textContent = duration + ' hora(s)';
-    document.getElementById('confirmedEndTime').textContent = endTime.toLocaleTimeString();
-    
-    new bootstrap.Modal(document.getElementById('confirmationModal')).show();
-}
-
-function actualizarEstadoReservas() {
-    fetch('/estado_espacios')
-        .then(response => response.json())
-        .then(espacios => {
-            // Guardar estados para verificación
-            espacios.forEach(espacio => {
-                espacioStates[espacio.id + 1] = {
-                    ocupado: espacio.ocupado,
-                    reservado: espacio.reservado
-                };
-            });
-
-            // Actualizar visualización
-            espacios.forEach(espacio => {
-                const elemento = document.getElementById(`space-reserva-${espacio.id + 1}`);
-                if (elemento) {
-                    if (espacio.reservado) {
-                        elemento.className = 'parking-space-reservas reservado';
-                        elemento.querySelector('.space-status-reservas').textContent = 'RESERVADO';
-                    } else if (espacio.ocupado) {
-                        elemento.className = 'parking-space-reservas ocupado';
-                        elemento.querySelector('.space-status-reservas').textContent = 'OCUPADO';
-                    } else {
-                        elemento.className = 'parking-space-reservas libre';
-                        elemento.querySelector('.space-status-reservas').textContent = 'DISPONIBLE';
-                    }
-                }
-            });
-        })
-        .catch(error => console.error('Error:', error));
-}
-
-function loadUserReservations() {
-    fetch('/api/mis_reservas')
-        .then(response => response.json())
-        .then(reservations => {
-            const container = document.getElementById('reservationsList');
-            
-            if (reservations.length === 0) {
-                container.innerHTML = '<p class="text-center text-muted">No tienes reservas activas</p>';
-                return;
-            }
-
-            let html = '';
-            reservations.forEach(res => {
-                const startTime = new Date(res.start_time).toLocaleString();
-                const endTime = new Date(res.end_time).toLocaleString();
-                const isActive = res.status === 'active' && new Date(res.end_time) > new Date();
-                
-                if (isActive) {
-                    html += `
-                        <div class="reservation-item-reserva active mb-2">
-                            <div class="reservation-space-reserva">Espacio ${res.space_number}</div>
-                            <div class="reservation-time-reserva">Hasta: ${endTime}</div>
-                        </div>
-                    `;
-                }
-            });
-
-            container.innerHTML = html || '<p class="text-center text-muted">No tienes reservas activas</p>';
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('reservationsList').innerHTML = 
-                '<p class="text-center text-danger">Error al cargar reservas</p>';
+/* Obtener estado con fallback */
+async function fetchEstadosReservas() {
+  try {
+    const r = await fetch(API_ESTADOS, {cache:'no-cache'});
+    if (r.ok) {
+      const arr = await r.json();
+      // si es array booleana, mapear a objetos
+      if (Array.isArray(arr) && typeof arr[0] === 'boolean') {
+        // construir objeto por index
+        const o = {};
+        arr.forEach((b,i) => o[i+1] = {ocupado: !!b, reservado: false});
+        estadoActual = o;
+        return estadoActual;
+      }
+      // si viene estructura legacy /estado_espacios
+      if (Array.isArray(arr) && arr.length && arr[0].hasOwnProperty('id')) {
+        const o = {};
+        arr.forEach(it => {
+          o[it.id + 1] = {ocupado: !!it.ocupado, reservado: !!it.reservado};
         });
+        estadoActual = o;
+        return estadoActual;
+      }
+    }
+  } catch (e) {
+    // intento fallback legacy
+  }
+  try {
+    const r2 = await fetch(LEGACY_ESTADOS, {cache:'no-cache'});
+    if (r2.ok) {
+      const arr2 = await r2.json();
+      const o = {};
+      arr2.forEach(it => { o[it.id + 1] = {ocupado: !!it.ocupado, reservado: !!it.reservado}; });
+      estadoActual = o;
+      return estadoActual;
+    }
+  } catch (e) {
+    console.warn('No se pudo obtener estados', e);
+  }
+  return estadoActual;
 }
 
-function showAlert(message, type) {
-    const alertClass = type === 'error' ? 'alert-danger' : 'alert-warning';
-    const alert = document.createElement('div');
-    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
-    alert.style.top = '20px';
-    alert.style.right = '20px';
-    alert.style.zIndex = '9999';
-    alert.style.minWidth = '300px';
-    alert.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(alert);
-    
-    setTimeout(() => {
-        if (alert.parentElement) {
-            alert.remove();
-        }
-    }, 5000);
+/* Actualizar UI de reservas (ejemplo simple) */
+async function actualizarUIReservas() {
+  await fetchEstadosReservas();
+  // si existe lista de botones o grid, se actualiza
+  // Ejemplo: actualizar texto de espacios con clase .space-reserva-N
+  for (const k in estadoActual) {
+    const id = k;
+    const el = document.querySelector(`[data-space='${id}']`);
+    if (el) {
+      const st = estadoActual[k];
+      el.classList.toggle('ocupado', st.ocupado);
+      el.classList.toggle('reservado', st.reservado);
+    }
+  }
 }
 
-// Inicializar
-document.addEventListener('DOMContentLoaded', function() {
-    inicializarLayoutReservas();
-    setupEventHandlers();
-    setInterval(actualizarEstadoReservas, 2000);
-    setInterval(loadUserReservations, 5000);
-    actualizarEstadoReservas();
-    loadUserReservations();
+// Reserva: POST a /api/reservar (mantener compatibilidad)
+async function reservarEspacio(id, minutes) {
+  try {
+    const res = await fetch('/api/reservar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({space: id, minutes})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alert('Reserva realizada con éxito');
+      await fetchEstadosReservas();
+    } else {
+      alert('No se pudo reservar: ' + (data.error || JSON.stringify(data)));
+    }
+  } catch (e) {
+    alert('Error de reservas: ' + e.message);
+  }
+}
+
+/* Inicialización */
+document.addEventListener('DOMContentLoaded', () => {
+  inicializarLayoutReservasCustom();
+  setInterval(actualizarUIReservas, POLL_INTERVAL);
+  actualizarUIReservas();
 });

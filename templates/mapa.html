@@ -1,143 +1,345 @@
-{% extends "base.html" %}
+<!-- templates/mapa.html -->
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Mapa de Estacionamiento - En Vivo</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 12px; }
+      #controls { margin-bottom: 12px; }
+      button { margin-right: 8px; padding: 8px 12px; }
+      #video-container { position: relative; display:inline-block; border: 1px solid #ccc; }
+      #video-stream { display:block; max-width: 100%; height:auto; }
+      #overlay { position:absolute; left:0; top:0; pointer-events:none; }
+      /* Modal para calibración */
+      .modal {
+        display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%;
+        background: rgba(0,0,0,0.6); align-items:center; justify-content:center;
+      }
+      .modal .box {
+        background:white; padding:10px; max-width: 90%; max-height: 90%; overflow:auto;
+      }
+      .roi-list { max-height: 150px; overflow:auto; border:1px solid #ddd; padding:6px; margin-top:6px;}
+      .roi-item { font-size:12px; margin-bottom:4px; }
+    </style>
+  </head>
+  <body>
+    <h2>Mapa del Estacionamiento — Vista en Vivo</h2>
 
-{% block title %}Mapa en Tiempo Real - Parking Intelligence{% endblock %}
-
-{% block content %}
-<div class="container-fluid px-0">
-    <!-- Header Section -->
-    <div class="bg-primary text-white py-4">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="h2 mb-2">
-                        <i class="bi bi-map me-2"></i>Mapa en Tiempo Real
-                    </h1>
-                    <p class="mb-0">Monitoreo activo de los 69 espacios del estacionamiento</p>
-                </div>
-                <div class="col-md-4 text-md-end">
-                    <div class="live-indicator">
-                        <span class="live-dot"></span>
-                        SISTEMA ACTIVO
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="controls">
+      <button id="btn-connect">Conectar cámara</button>
+      <button id="btn-disconnect">Desconectar cámara</button>
+      <button id="btn-calibrate">Calibrar / Editar Mapa</button>
+      <button id="btn-reload" title="Recargar espacios desde espacios.pkl">Recargar mapa</button>
+      <span id="status" style="margin-left:12px;color:green"></span>
     </div>
 
-    <!-- Main Content -->
-    <div class="container py-4">
-        <div class="row g-4">
-            <!-- Video Section -->
-            <div class="col-lg-8">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-camera-video text-primary me-2"></i>
-                            Vista en Tiempo Real
-                        </h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <img id="videoStream" src="{{ url_for('video_feed') }}" 
-                             class="img-fluid w-100" alt="Video en tiempo real">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Stats Sidebar -->
-            <div class="col-lg-4">
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-speedometer2 text-primary me-2"></i>
-                            Estadísticas
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <div class="stat-mini-card total">
-                                    <div class="stat-mini-number" id="totalSide">0</div>
-                                    <div class="stat-mini-label">Total</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="stat-mini-card free">
-                                    <div class="stat-mini-number" id="libresSide">0</div>
-                                    <div class="stat-mini-label">Libres</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="stat-mini-card occupied">
-                                    <div class="stat-mini-number" id="ocupadosSide">0</div>
-                                    <div class="stat-mini-label">Ocupados</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="stat-mini-card">
-                                    <div class="stat-mini-number" id="porcentajeSide">0%</div>
-                                    <div class="stat-mini-label">Disponible</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Legend -->
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-info-circle text-primary me-2"></i>
-                            Leyenda
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="legend-item d-flex align-items-center mb-3">
-                            <div class="legend-color libre me-3"></div>
-                            <span>Espacio Libre</span>
-                        </div>
-                        <div class="legend-item d-flex align-items-center mb-3">
-                            <div class="legend-color ocupado me-3"></div>
-                            <span>Espacio Ocupado</span>
-                        </div>
-                        <div class="legend-item d-flex align-items-center mb-3">
-                            <div class="legend-color reservado me-3"></div>
-                            <span>Espacio Reservado</span>
-                        </div>
-                        <div class="legend-item d-flex align-items-center">
-                            <div class="legend-color pista me-3"></div>
-                            <span>Pista de Circulación</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Parking Map -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white py-3">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-layout-text-sidebar text-primary me-2"></i>
-                            Mapa del Estacionamiento
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="parking-layout-compact" id="parkingLayout">
-                            <!-- Mapa se genera automáticamente con JavaScript -->
-                        </div>
-                        <div class="text-center mt-3 text-muted">
-                            <small>Última actualización: <span id="lastUpdate">--:--:--</span></small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="video-container">
+      <img id="video-stream" src="/video_feed" alt="Video en vivo" />
+      <canvas id="overlay"></canvas>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<!-- Cargar el JavaScript específico del mapa -->
-<script src="{{ url_for('static', filename='js/mapa.js') }}"></script>
-{% endblock %}
+    <!-- Modal de calibración -->
+    <div id="modal-cal" class="modal" role="dialog" aria-hidden="true">
+      <div class="box">
+        <h3>Calibración — dibuja rectángulos (arrastrar) sobre la imagen</h3>
+        <p>Herramientas: arrastra para crear rectángulos. Pulsa Guardar para subirlos al servidor (reemplazan al mapa actual).</p>
+        <div style="display:flex; gap:8px;">
+          <div style="flex:1;">
+            <div style="position:relative; display:inline-block;">
+              <img id="snap-img" src="/snapshot" alt="snapshot" style="max-width:100%; display:block;" />
+              <canvas id="snap-canvas" style="position:absolute; left:0; top:0;"></canvas>
+            </div>
+            <div style="margin-top:8px;">
+              <button id="btn-clear-rois">Borrar todas</button>
+              <button id="btn-save-rois">Guardar en servidor</button>
+              <button id="btn-close-cal">Cerrar</button>
+            </div>
+          </div>
+          <div style="width:320px;">
+            <h4>ROI actuales</h4>
+            <div class="roi-list" id="roi-list"></div>
+            <p>Haz click en un ROI en la lista para eliminarlo.</p>
+            <hr/>
+            <p>Consejo: abre la cámara antes de tomar snapshot para que la imagen esté actualizada.</p>
+            <button id="btn-refresh-snap">Actualizar snapshot</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Globals
+      let espacios = []; // actuales en servidor en coordenadas naturales (FRAME_WIDTH x FRAME_HEIGHT)
+      let estados = [];
+      const img = document.getElementById('video-stream');
+      const overlay = document.getElementById('overlay');
+      const ctx = overlay.getContext('2d');
+
+      // Buttons
+      document.getElementById('btn-connect').addEventListener('click', async () => {
+        await fetch('/api/start_camera', {method: 'POST'});
+        setStatus('Cámara conectada');
+      });
+      document.getElementById('btn-disconnect').addEventListener('click', async () => {
+        await fetch('/api/stop_camera', {method: 'POST'});
+        setStatus('Cámara desconectada');
+      });
+      document.getElementById('btn-reload').addEventListener('click', async () => {
+        const r = await fetch('/api/reload_espacios', {method:'POST'});
+        const j = await r.json();
+        if (j.ok) {
+          await loadEspacios();
+          setStatus('Mapa recargado');
+        } else {
+          setStatus('Error recargar mapa');
+        }
+      });
+
+      function setStatus(txt) {
+        const s = document.getElementById('status');
+        s.textContent = txt;
+        setTimeout(()=>{ if (s.textContent === txt) s.textContent = '' }, 3000);
+      }
+
+      // Ajustar overlay al tamaño de la imagen
+      function resizeOverlay() {
+        overlay.width = img.clientWidth;
+        overlay.height = img.clientHeight;
+      }
+
+      // Dibujar rectángulos (escala desde coordenadas naturales -> mostradas)
+      function drawOverlay() {
+        if (!espacios) return;
+        ctx.clearRect(0,0,overlay.width, overlay.height);
+        const scaleX = img.clientWidth / img.naturalWidth;
+        const scaleY = img.clientHeight / img.naturalHeight;
+        for (let i=0;i<espacios.length;i++){
+          const e = espacios[i];
+          const x = Math.round(e[0] * scaleX);
+          const y = Math.round(e[1] * scaleY);
+          const w = Math.round(e[2] * scaleX);
+          const h = Math.round(e[3] * scaleY);
+          const ocupado = estados[i] === true;
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = ocupado ? 'rgba(255,0,0,0.95)' : 'rgba(0,255,0,0.95)';
+          ctx.fillStyle = ocupado ? 'rgba(255,0,0,0.15)' : 'rgba(0,255,0,0.05)';
+          ctx.strokeRect(x,y,w,h);
+          ctx.fillRect(x,y,w,h);
+          ctx.fillStyle = 'white';
+          ctx.font = '14px Arial';
+          ctx.fillText(`${i+1} ${ocupado ? 'Ocupado' : 'Libre'}`, x+4, Math.max(14, y+14));
+        }
+      }
+
+      // Polling para estado y dibujo
+      async function fetchEstado() {
+        try {
+          const res = await fetch('/api/estado');
+          const data = await res.json();
+          estados = data;
+          drawOverlay();
+        } catch(e) {
+          // ignorar
+        }
+      }
+
+      async function loadEspacios() {
+        const res = await fetch('/api/espacios');
+        espacios = await res.json();
+        drawOverlay();
+      }
+
+      // Inicialización
+      window.addEventListener('load', async () => {
+        // Cuando la imagen del stream cargue, ajustar overlay
+        img.addEventListener('load', () => {
+          resizeOverlay();
+          drawOverlay();
+        });
+        window.addEventListener('resize', () => {
+          resizeOverlay();
+          drawOverlay();
+        });
+
+        await loadEspacios();
+        setInterval(fetchEstado, 1000);
+      });
+
+      // -------------------- Modal Calibración (dibujar rects sobre snapshot) --------------------
+      const modal = document.getElementById('modal-cal');
+      const btnCal = document.getElementById('btn-calibrate');
+      const btnCloseCal = document.getElementById('btn-close-cal');
+      const snapImg = document.getElementById('snap-img');
+      const snapCanvas = document.getElementById('snap-canvas');
+      const sc = snapCanvas.getContext('2d');
+      let drawing = false;
+      let startX=0, startY=0; // start in canvas coords
+      let rois = []; // array of {x,y,w,h} in natural coordinates (same basis as snapshot natural size)
+
+      // open modal
+      btnCal.addEventListener('click', async () => {
+        // ensure camera running
+        await fetch('/api/start_camera', {method:'POST'});
+        // load a fresh snapshot
+        await refreshSnapshot();
+        modal.style.display = 'flex';
+      });
+
+      btnCloseCal.addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+
+      // refresh snapshot image
+      document.getElementById('btn-refresh-snap').addEventListener('click', refreshSnapshot);
+      async function refreshSnapshot(){
+        // append timestamp to bust cache
+        snapImg.src = '/snapshot?ts=' + Date.now();
+        // when snapshot loaded, resize canvas to match
+        snapImg.onload = () => {
+          snapCanvas.width = snapImg.clientWidth;
+          snapCanvas.height = snapImg.clientHeight;
+          snapCanvas.style.left = snapImg.offsetLeft + 'px';
+          snapCanvas.style.top = snapImg.offsetTop + 'px';
+          // load existing ROIs (server ones) and draw them
+          fetch('/api/espacios').then(r=>r.json()).then(server_rois => {
+            rois = server_rois.slice(); // in natural coords
+            drawSnap();
+            renderRoiList();
+          });
+        }
+      }
+
+      // Convert between displayed canvas coords and natural snapshot coords
+      function displayToNatural(dx, dy) {
+        const scaleX = snapImg.naturalWidth / snapImg.clientWidth;
+        const scaleY = snapImg.naturalHeight / snapImg.clientHeight;
+        return { x: Math.round(dx * scaleX), y: Math.round(dy * scaleY) };
+      }
+      function naturalToDisplay(nx, ny) {
+        const scaleX = snapImg.clientWidth / snapImg.naturalWidth;
+        const scaleY = snapImg.clientHeight / snapImg.naturalHeight;
+        return { x: Math.round(nx * scaleX), y: Math.round(ny * scaleY) };
+      }
+
+      // Drawing on snapshot canvas (create rectangles)
+      snapCanvas.addEventListener('mousedown', (ev) => {
+        const rect = snapCanvas.getBoundingClientRect();
+        startX = ev.clientX - rect.left;
+        startY = ev.clientY - rect.top;
+        drawing = true;
+      });
+      snapCanvas.addEventListener('mousemove', (ev) => {
+        if (!drawing) return;
+        const rect = snapCanvas.getBoundingClientRect();
+        const mx = ev.clientX - rect.left;
+        const my = ev.clientY - rect.top;
+        drawSnap(); // redraw existing
+        // draw preview rectangle
+        sc.strokeStyle = 'yellow';
+        sc.lineWidth = 2;
+        sc.strokeRect(startX, startY, mx - startX, my - startY);
+      });
+      snapCanvas.addEventListener('mouseup', (ev) => {
+        if (!drawing) return;
+        drawing = false;
+        const rect = snapCanvas.getBoundingClientRect();
+        const endX = ev.clientX - rect.left;
+        const endY = ev.clientY - rect.top;
+        // convert to natural coords
+        const p1 = displayToNatural(startX, startY);
+        const p2 = displayToNatural(endX, endY);
+        const nx = Math.min(p1.x, p2.x);
+        const ny = Math.min(p1.y, p2.y);
+        const nw = Math.abs(p1.x - p2.x);
+        const nh = Math.abs(p1.y - p2.y);
+        if (nw > 5 && nh > 5) {
+          rois.push([nx, ny, nw, nh]);
+          drawSnap();
+          renderRoiList();
+        }
+      });
+
+      // helper: draw snapshot + rois
+      function drawSnap() {
+        // clear
+        sc.clearRect(0,0,snapCanvas.width, snapCanvas.height);
+        // draw translucent overlay for each roi
+        for (let i=0;i<rois.length;i++){
+          const r = rois[i];
+          const p = naturalToDisplay(r[0], r[1]);
+          const dimW = Math.round(r[2] * (snapImg.clientWidth / snapImg.naturalWidth));
+          const dimH = Math.round(r[3] * (snapImg.clientHeight / snapImg.naturalHeight));
+          sc.lineWidth = 2;
+          sc.strokeStyle = 'lime';
+          sc.fillStyle = 'rgba(0,255,0,0.18)';
+          sc.strokeRect(p.x, p.y, dimW, dimH);
+          sc.fillRect(p.x, p.y, dimW, dimH);
+          sc.fillStyle = 'white';
+          sc.font = '12px Arial';
+          sc.fillText(`${i+1}`, p.x + 4, Math.max(12, p.y + 12));
+        }
+      }
+
+      // ROI list UI
+      function renderRoiList(){
+        const list = document.getElementById('roi-list');
+        list.innerHTML = '';
+        rois.forEach((r, idx) => {
+          const div = document.createElement('div');
+          div.className = 'roi-item';
+          div.textContent = `${idx+1}: x=${r[0]}, y=${r[1]}, w=${r[2]}, h=${r[3]}`;
+          div.addEventListener('click', () => {
+            // eliminar al click
+            if (!confirm('Eliminar ROI #' + (idx+1) + '?')) return;
+            rois.splice(idx,1);
+            drawSnap();
+            renderRoiList();
+          });
+          list.appendChild(div);
+        });
+      }
+
+      // borrar todas
+      document.getElementById('btn-clear-rois').addEventListener('click', () => {
+        if (!confirm('Borrar todas las ROI?')) return;
+        rois = [];
+        drawSnap();
+        renderRoiList();
+      });
+
+      // guardar rois al servidor
+      document.getElementById('btn-save-rois').addEventListener('click', async () => {
+        if (rois.length === 0) {
+          if (!confirm('No hay ROI. Guardar vacío?')) return;
+        }
+        const payload = rois; // array de [x,y,w,h] en natural coords
+        const res = await fetch('/api/save_espacios', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const j = await res.json();
+        if (j.ok) {
+          alert('ROIs guardadas: ' + j.count);
+          // recargar mapa en la UI principal
+          await loadEspacios();
+          modal.style.display = 'none';
+          setStatus('Mapa actualizado');
+        } else {
+          alert('Error guardando: ' + JSON.stringify(j));
+        }
+      });
+
+      // clear rois array and close
+      document.getElementById('btn-close-cal').addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+
+      // Inicial: cuando modal se abra, cargamos snapshot; handled in btnCal click
+      // cuando cierras modal, nada más
+
+    </script>
+  </body>
+</html>
