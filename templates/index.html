@@ -28,9 +28,11 @@
       </div>
 
       <div class="col-lg-6 text-center">
-        <!-- Aquí se puede mostrar una vista previa (stream) si se desea -->
-        <div id="home-video-preview" class="video-container" style="max-width:480px; margin:0 auto;">
-          <img id="home-video" src="/video_feed" alt="Preview" style="width:100%; height:auto;" />
+        <div id="home-video-preview" class="video-container" style="max-width:480px; margin:0 auto; display:none;">
+          <img id="home-video" src="/video_feed" alt="Preview" style="width:100%; height:auto; display:none;" />
+        </div>
+        <div id="home-connect-message" style="margin:24px 0; color:#444; font-size:1.2em;">
+          Debes conectar la cámara para ver la vista previa.
         </div>
       </div>
     </div>
@@ -84,11 +86,19 @@
     document.getElementById('btn-connect-home').addEventListener('click', async () => {
       await fetch('/api/start_camera', {method: 'POST'}).catch(()=>{});
       document.getElementById('home-status').textContent = 'Conectando cámara...';
+      // Mostrar video y ocultar mensaje
+      document.getElementById('home-video-preview').style.display = '';
+      document.getElementById('home-video').style.display = '';
+      document.getElementById('home-connect-message').style.display = 'none';
       setTimeout(()=> document.getElementById('home-status').textContent = '', 3000);
     });
     document.getElementById('btn-disconnect-home').addEventListener('click', async () => {
       await fetch('/api/stop_camera', {method: 'POST'}).catch(()=>{});
       document.getElementById('home-status').textContent = 'Cámara desconectada';
+      // Ocultar video y mostrar mensaje
+      document.getElementById('home-video-preview').style.display = 'none';
+      document.getElementById('home-video').style.display = 'none';
+      document.getElementById('home-connect-message').style.display = '';
       setTimeout(()=> document.getElementById('home-status').textContent = '', 3000);
     });
   });

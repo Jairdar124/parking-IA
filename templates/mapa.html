@@ -35,9 +35,13 @@
       <span id="status" style="margin-left:12px;color:green"></span>
     </div>
 
-    <div id="video-container">
-      <img id="video-stream" src="/video_feed" alt="Video en vivo" />
-      <canvas id="overlay"></canvas>
+
+    <div id="video-container" style="display:none;">
+      <img id="video-stream" src="/video_feed" alt="Video en vivo" style="display:none;" />
+      <canvas id="overlay" style="display:none;"></canvas>
+    </div>
+    <div id="connect-message" style="margin:24px 0; color:#444; font-size:1.2em;">
+      Debes conectar la cámara para ver el mapa en tiempo real.
     </div>
 
     <!-- Modal de calibración -->
@@ -80,6 +84,11 @@
       // Buttons
       document.getElementById('btn-connect').addEventListener('click', async () => {
         await fetch('/api/start_camera', {method: 'POST'});
+        // Mostrar video y overlay
+        document.getElementById('video-container').style.display = '';
+        document.getElementById('video-stream').style.display = '';
+        document.getElementById('overlay').style.display = '';
+        document.getElementById('connect-message').style.display = 'none';
         setStatus('Cámara conectada');
       });
       document.getElementById('btn-disconnect').addEventListener('click', async () => {

@@ -1,17 +1,13 @@
 # app.py
 import os
-import time
-import io
+from flask import Flask, render_template, Response, jsonify, request
 import pickle
-from flask import Flask, render_template, Response, jsonify, request, send_file
-import cv2
-import app_camera  # IMPORTAR el módulo completo (no nombres individuales)
+import app_camera  # Solo se usa la lógica de cámara
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET', 'replace-in-prod')
 
-# video_processor global (instancia de app_camera.VideoProcessor)
-video_processor = None
+video_processor = None  # Instancia global de app_camera.VideoProcessor
 
 def start_video_processor_if_needed():
     global video_processor
@@ -34,15 +30,13 @@ def stop_video_processor():
 def index():
     return render_template('mapa.html')
 
-# MJPEG streaming
+
 def mjpeg_generator():
-    # asegurarse de haber arrancado
     start_video_processor_if_needed()
     while True:
-        # tomamos el frame anotado para streaming
         frame = video_processor.get_frame_bytes()
         if frame is None:
-            time.sleep(0.05)
+            import time; time.sleep(0.05)
             continue
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
@@ -80,13 +74,12 @@ def api_stop_camera():
 @app.route('/snapshot')
 def snapshot():
     start_video_processor_if_needed()
-    # tomamos copia segura del frame raw (no anotado)
+    # Tomar snapshot seguro del frame actual (no anotado)
     with video_processor.lock:
         frame = video_processor.frame.copy() if video_processor.frame is not None else None
     if frame is None:
-        # no frame aún
         return ("No frame", 503)
-    # codificar a JPEG
+    import cv2
     ret, jpeg = cv2.imencode('.jpg', frame)
     if not ret:
         return ("Encode error", 500)
